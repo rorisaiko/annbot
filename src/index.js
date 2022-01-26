@@ -213,6 +213,11 @@ async function whoHas(message, args) {
 
 	const toCheck = [], outputMsgs = [];
 	filterVideoCode(args, toCheck);
+	if (toCheck.length === 0) {
+		message.channel.send("The title ID(s) you entered in invalid. Please try again.")
+		return;
+	}
+
 	for (const titleID of toCheck) {
 		
 		// Get the userid of the users who have the titles requested
