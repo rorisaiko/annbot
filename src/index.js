@@ -138,10 +138,13 @@ async function addRecords(message, args) {
 			[rows, fields] = await con.query(sql, [toAddIntoDB]);
 			titlesAdded += parseInt(rows.affectedRows);
 		}
+		outputMsgs.push(`${titlesAdded} title ID${titlesAdded > 1 ? "s have" : " has"} been added to the database`);
+		if (newContributor) outputMsgs.push("Thank you for your first contribution!");
+	}
+	else {
+		outputMsgs.push("No title ID has been added")
 	}
 
-	outputMsgs.push(`${titlesAdded} title ID${titlesAdded > 1 ? "s have" : " has"} been added to the database`);
-	if (newContributor) outputMsgs.push("Thank you for your first contribution!");
 	message.reply(outputMsgs.join("\n"));
 	
 }
@@ -194,8 +197,11 @@ async function removeRecords(message, args) {
 			sql = `DELETE FROM ${config.db.table} WHERE id IN (?)`;
 			[rows, fields] = await con.query(sql,[inDB]);
 		}
+		message.reply(`${inDB.length} Title ID${inDB.length > 1 ? "s have" : " has"} been removed from the database`);
 	}
-	message.reply(`${inDB.length} Title ID${inDB.length > 1 ? "s have" : " has"} been removed from the database`);
+	else {
+		message.reply("No Title ID has been removed")
+	}
 	
 }
 
