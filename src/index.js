@@ -3,7 +3,7 @@
 const { Client, Intents, Channel, Guild, Message } = require('discord.js');
 const config = require("../config.json");
 const client = new Client({ intents: ['DIRECT_MESSAGES', 'GUILD_MESSAGES', 'GUILDS'], partials: ['MESSAGE', 'CHANNEL'] });
-const codePattern = /^[A-Z]{1,6}-[A-Z0-9]{1,6}$/;
+const codePattern = /^[A-Z0-9]{1,6}-[A-Z0-9-]{1,6}$/;
 
 const mysql = require("mysql2/promise");
 var con;
