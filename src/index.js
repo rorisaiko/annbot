@@ -29,13 +29,27 @@ client.once('ready', () => {
 // When the bot sees a message
 client.on('messageCreate', async (message) => {
 
-	// The bot only cares about the message from real users (not bots) in the specified bot channel and DMs
-	// Care: not bot and (dm or botchannel)
-	// Don't care: bot or (not dm and not botchannel)
-	if (message.author.bot || (message.channel.type !== "DM" && !(message.channel.type === "GUILD_TEXT" && message.channelId === config.discord.botChannel))) return;
+	// The bot only cares about the messages from real users (not bots), either in DM or mentioning the bot in any non-DM text channels
+	// Care: not bot and (dm or mentioned)
+	// Don't care: bot or (not dm and not mentioned)
+	if (message.author.bot || (message.channel.type !== "DM" && !(message.content.startsWith(`<@!${client.user.id}>`)))) return;
+	
+	var cmd, msg, args = [];
+	// Take away the mention from the msssage if the bot was mentioned
+	if (message.content.startsWith(`<@!${client.user.id}>`))
+		msg = message.content.replace((`<@!${client.user.id}>`),"");
+	else {
+		msg = message.content;
+	}
+	
+	// Exit if the message is empty apart from the mention
+	if (!msg.trim()) {
+		message.reply("Hey what's up?")
+		return;
+	}
+	
+	[cmd, ...args] = msg.trim().split(/[,\s]+/);
 
-	// Analyze command and arguments
-	const [cmd, ...args] = message.content.trim().split(/[,\s]+/);
 	switch (cmd.toLowerCase()) {
 		case "help":
 			showHelp(message);
@@ -96,15 +110,10 @@ async function addRecords(message, args) {
 		return;
 	}
 
-	// Filter the valid title IDs
-	const toAdd = [], userID = message.author.id, userTag = message.author.tag;
-	for (var titleID of args) {
-		titleID = titleID.toUpperCase();
-		if (codePattern.test(titleID)) {
-			titleID = mysql.escape(titleID).replace(/'/g,"");
-			toAdd.push(titleID);
-		}			
-	}
+	// Change the title IDs to ALL CAPS
+	const toAdd = processTitleIDs(args);
+	const userID = message.author.id;
+	const userTag = message.author.tag;	
 
 	let titlesAdded = 0, newContributor = false, outputMsgs = [];
 	if(toAdd.length > 0) {
@@ -154,7 +163,7 @@ async function addRecords(message, args) {
  * @param {Message} message - Message object returned by the client listener
  */
 async function listMine(message) {
-	const sql = `SELECT titleid FROM ${config.db.table} WHERE userid = ?`;
+	const sql = `SELECT titleid FROM ${config.db.table} WHERE userid = ? ORDER BY titleid`;
 	const [rows, fields] = await con.query(sql, [message.author.id]);
 
 	const showResult = [];
@@ -183,8 +192,8 @@ async function removeRecords(message, args) {
 		return;
 	}
 
-	const toRemove = [], inDB = [];
-	filterVideoCode(args, toRemove);
+	const toRemove = processTitleIDs(args);
+	const inDB = [];
 
 	if (toRemove.length > 0) {
 		var sql = `SELECT id FROM ${config.db.table} WHERE userid = ? AND titleid in (?)`;
@@ -217,8 +226,9 @@ async function whoHas(message, args) {
 		return;
 	}
 
-	const toCheck = [], outputMsgs = [];
-	filterVideoCode(args, toCheck);
+	const toCheck = processTitleIDs(args);
+	const outputMsgs = [];
+	
 	if (toCheck.length === 0) {
 		message.channel.send("The title ID(s) you entered in invalid. Please try again.")
 		return;
@@ -252,16 +262,14 @@ async function whoHas(message, args) {
 }
 
 /**
- * Helper function to filter the valid title IDs in user command
+ * Helper function to change title IDs in user command to uppercase and remove the hyphens
  * @param {string[]} args - Array of strings from the user command
- * @param {string[]} targetArray - Array that the title IDs should be put in
+ * @returns {string[]} resultArr
  */
-function filterVideoCode(args, targetArray) {
-	for (var videocode of args) {
-		videocode = videocode.toUpperCase();
-		if (codePattern.test(videocode)) {
-			videocode = mysql.escape(videocode).replace(/'/g,"");
-			targetArray.push(videocode);
-		}			
+function processTitleIDs(args) {
+	const resultArr = [];
+	for (var videoCode of args) {
+		resultArr.push(videoCode.toUpperCase());
 	}
+	return resultArr;
 }
