@@ -5,18 +5,15 @@ const config = require("../config.json");
 const client = new Client({ intents: ['DIRECT_MESSAGES', 'GUILD_MESSAGES', 'GUILDS'], partials: ['MESSAGE', 'CHANNEL'] });
 const codePattern = /^[A-Z0-9]{1,6}-[A-Z0-9-]{1,6}$/;
 
-const mysql = require("mysql2/promise");
+const mysql = require("mysql2");
 var con;
-async function preparesql() {
-	con = await mysql.createConnection({
-		host: config.db.host,
-		user: config.db.user,
-		password: config.db.pass,
-		database: config.db.db
-	});
-	
-}
-preparesql();
+con = mysql.createPool({
+	host: config.db.host,
+	user: config.db.user,
+	password: config.db.pass,
+	database: config.db.db
+}).promise();
+
 
 // Login the bot to Discord
 client.login(config.token);
