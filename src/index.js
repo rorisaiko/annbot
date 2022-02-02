@@ -243,19 +243,16 @@ async function whoHas(message, args) {
 		
 		// Lookup the tags of the users who have the titles requested
 		if (userIDs.length > 0) {
-			var usertags = [];
-			sql = `SELECT usertag FROM users WHERE userid in (?)`;
-			[rows, fields] = await con.query(sql, [userIDs]);
-			for (const iterator of rows) {
-				usertags.push(iterator.usertag);
-			}
-			outputMsgs.push(`The following user${usertags.length > 1 ? "s have" : " has"} ${titleID}\n- ${usertags.join(", ")}`);
+			outputMsgs.push(`The following user${userIDs.length > 1 ? "s have" : " has"} ${titleID}\n<@!${userIDs.join(">, <@!")}>`);
 		}
 		else {
 			outputMsgs.push(`No one has ${titleID}`)
 		}
 	}
-	message.reply(outputMsgs.join("\n"));
+	message.reply({
+		content: outputMsgs.join("\n"),
+		allowedMentions: {parse: []}
+	});
 }
 
 /**
