@@ -241,9 +241,13 @@ async function whoHas(message, args) {
 			userIDs.push(iterator.userid);
 		}
 		
-		// Lookup the tags of the users who have the titles requested
+		// Show the users who have the titles requested
 		if (userIDs.length > 0) {
-			outputMsgs.push(`The following user${userIDs.length > 1 ? "s have" : " has"} ${titleID}\n<@!${userIDs.join(">, <@!")}>`);
+			if(userIDs.length > 1) {
+				outputMsgs.push(`The following users have ${titleID}:\n<@!${userIDs.join(">, <@!")}>`);
+			} else {
+				outputMsgs.push(`<@${userIDs[0]}> has ${titleID}`);
+			}
 		}
 		else {
 			outputMsgs.push(`No one has ${titleID}`)
