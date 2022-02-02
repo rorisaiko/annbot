@@ -2,7 +2,7 @@
 
 const { Client, Intents, Channel, Guild, Message } = require('discord.js');
 const config = require("../config.json");
-const client = new Client({ intents: ['DIRECT_MESSAGES', 'GUILD_MESSAGES', 'GUILDS'], partials: ['MESSAGE', 'CHANNEL'] });
+const client = new Client({ intents: ['DIRECT_MESSAGES', 'GUILD_MESSAGES', 'GUILDS', 'GUILD_MEMBERS'], partials: ['MESSAGE', 'CHANNEL'] });
 const codePattern = /^[A-Z0-9]{1,6}-[A-Z0-9-]{1,6}$/;
 
 const mysql = require("mysql2");
@@ -47,26 +47,32 @@ client.on('messageCreate', async (message) => {
 	
 	[cmd, ...args] = msg.trim().split(/[,\s]+/);
 
-	switch (cmd.toLowerCase()) {
-		case "help":
-			showHelp(message);
-		break;
-		case "add":
-			addRecords(message, args);
-		break;
-		case "remove":
-		case "delete":
-			removeRecords(message, args);
-		break;
-		case "listmine":
-			listMine(message);
-		break;
-		case "whohas":
-			whoHas(message, args);
-		break;
-		case "echo":
-			message.reply("echo");
-		break;
+	try {
+		switch (cmd.toLowerCase()) {
+			case "help":
+				showHelp(message);
+			break;
+			case "add":
+				addRecords(message, args);
+			break;
+			case "remove":
+			case "delete":
+				removeRecords(message, args);
+			break;
+			case "listmine":
+				listMine(message);
+			break;
+			case "whohas":
+				whoHas(message, args);
+			break;
+			case "echo":
+				message.reply("echo");
+			break;
+		}
+		} catch (e) {
+			var notifyUser = (await client.users.fetch(config.discord.errorNotifyID));
+			notifyUser.send(`Error executing command "${msg}" entered by user ${message.author.tag}`);
+			notifyUser.send(e);
 	}
 	
 })

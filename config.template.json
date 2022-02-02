@@ -8,6 +8,7 @@
 		"table": "TABLE_NAME_FOR_STORING_TITLES"
 	},
 	"discord": {
-		"botChannel": "CHANNEL_ID_FOR_BOT_INTERACTION"
+		"botChannel": "CHANNEL_ID_FOR_BOT_INTERACTION",
+		"errorNotifyID": "WHO_TO_NOTIFY_WHEN_ERROR_OCCURS"
 	}
 }
