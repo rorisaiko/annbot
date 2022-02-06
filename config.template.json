@@ -4,8 +4,7 @@
 		"host": "DATABASE_HOSTNAME_OR_IP",
 		"user": "DATABASE_USERNAME",
 		"pass": "DATABASE_PASSWORD",
-		"db": "DATABASE_NAME",
-		"table": "TABLE_NAME_FOR_STORING_TITLES"
+		"db": "DATABASE_NAME"
 	},
 	"discord": {
 		"botChannel": "CHANNEL_ID_FOR_BOT_INTERACTION",

@@ -122,17 +122,17 @@ async function addRecords(message, args) {
 	if(toAdd.length > 0) {
 		
 		// Check if the user exists in the users table. If not, add it first - otherwise titles cannot be added due to foreign keys constriant
-		let sql = 'SELECT userid FROM users WHERE userid = ?';
+		let sql = 'SELECT userid FROM gnt_users WHERE userid = ?';
 		var [rows, fields] = await con.execute(sql, [userID]);
 		if (rows.length == 0) {
-			sql = 'INSERT INTO users (userid, usertag) VALUES ?';
+			sql = 'INSERT INTO gnt_users (userid, usertag) VALUES ?';
 			const [rows, fields] = await con.query(sql, [[[userID, userTag]]]);
 			newContributor = true;
 		}
 
 		// Remove the titles that already exist in the titles table from toAdd[]
 		const toAddIntoDB = [], alreadyAdded = [];
-		sql = 'SELECT titleid FROM titles WHERE userid = ? AND titleid IN (?) ORDER BY titleid';
+		sql = 'SELECT titleid FROM gnt_titles WHERE userid = ? AND titleid IN (?) ORDER BY titleid';
 		[rows, fields] = await con.query(sql, [userID, toAdd]);
 		for (const iterator of rows) {
 			toAdd.splice(toAdd.indexOf(iterator.titleid),1);
@@ -146,7 +146,7 @@ async function addRecords(message, args) {
 				toAddIntoDB.push([iterator, userID])
 			}
 			
-			sql = `INSERT INTO ${config.db.table} (titleid, userid) VALUES ?`;
+			sql = `INSERT INTO gnt_titles (titleid, userid) VALUES ?`;
 			[rows, fields] = await con.query(sql, [toAddIntoDB]);
 			titlesAdded += parseInt(rows.affectedRows);
 		}
@@ -166,7 +166,7 @@ async function addRecords(message, args) {
  * @param {Message} message - Message object returned by the client listener
  */
 async function listMine(message) {
-	const sql = `SELECT titleid FROM ${config.db.table} WHERE userid = ? ORDER BY titleid`;
+	const sql = `SELECT titleid FROM gnt_titles WHERE userid = ? ORDER BY titleid`;
 	const [rows, fields] = await con.query(sql, [message.author.id]);
 
 	const showResult = [];
@@ -199,14 +199,14 @@ async function removeRecords(message, args) {
 	const inDB = [];
 
 	if (toRemove.length > 0) {
-		var sql = `SELECT id FROM ${config.db.table} WHERE userid = ? AND titleid in (?)`;
+		var sql = `SELECT id FROM gnt_titles WHERE userid = ? AND titleid in (?)`;
 		var [rows, fields] = await con.query(sql, [message.author.id, toRemove]);
 		
 		for (const eachResult of rows) {
 			inDB.push(eachResult.id);
 		}
 		if (inDB.length > 0) {
-			sql = `DELETE FROM ${config.db.table} WHERE id IN (?)`;
+			sql = `DELETE FROM gnt_titles WHERE id IN (?)`;
 			[rows, fields] = await con.query(sql,[inDB]);
 		}
 		message.reply(`${inDB.length} Title ID${inDB.length > 1 ? "s have" : " has"} been removed from the database`);
@@ -240,7 +240,7 @@ async function whoHas(message, args) {
 	for (const titleID of toCheck) {
 		
 		// Get the userid of the users who have the titles requested
-		var sql = `SELECT userid FROM ${config.db.table} WHERE titleid = ?`;
+		var sql = `SELECT userid FROM gnt_titles WHERE titleid = ?`;
 		var [rows, fields] = await con.query(sql, [titleID]);
 		var userIDs = [];
 		for (const iterator of rows) {
