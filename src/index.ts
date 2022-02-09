@@ -1,87 +1,87 @@
-//@ts-check
+import { Client, Message } from "discord.js";
+import config from "./config.json";
+import mysql, { OkPacket, RowDataPacket } from "mysql2";
 
-const { Client, Intents, Channel, Guild, Message } = require('discord.js');
-const config = require("../config.json");
-const client = new Client({ intents: ['DIRECT_MESSAGES', 'GUILD_MESSAGES', 'GUILDS', 'GUILD_MEMBERS'], partials: ['MESSAGE', 'CHANNEL'] });
-const codePattern = /^[A-Z0-9]{1,6}-[A-Z0-9-]{1,6}$/;
-
-const mysql = require("mysql2");
-var con;
-con = mysql.createPool({
+let con = mysql.createPool({
 	host: config.db.host,
 	user: config.db.user,
 	password: config.db.pass,
 	database: config.db.db
 }).promise();
 
+(async () => {	
+	const client = new Client({ intents: ['DIRECT_MESSAGES', 'GUILD_MESSAGES', 'GUILDS', 'GUILD_MEMBERS'], partials: ['MESSAGE', 'CHANNEL'] });
+	await client.login(config.token);
 
-// Login the bot to Discord
-client.login(config.token);
-
-// [For debug]
-client.once('ready', () => {
-	console.log("Logged in to Discord");
-})
-
-// When the bot sees a message
-client.on('messageCreate', async (message) => {
-
-	// The bot only cares about the messages from real users (not bots), either in DM or mentioning the bot in any non-DM text channels
-	// Care: not bot and (dm or mentioned)
-	// Don't care: bot or (not dm and not mentioned)
-	if (message.author.bot || (message.channel.type !== "DM" && !(message.content.startsWith(`<@!${client.user.id}>`)) && !(message.content.startsWith(`<@${client.user.id}>`)))) return;
+	client.once('ready', () => {
+		console.log("Logged in to Discord");
+	})
 	
-	var cmd, msg, args = [];
-	// Take away the mention from the msssage if the bot was mentioned
-	if (message.content.startsWith(`<@`))
+	const codePattern = /^[A-Z0-9]{1,6}-[A-Z0-9-]{1,6}$/;
+	
+
+	
+	
+	// When the bot sees a message
+	client.on('messageCreate', async (message) => {
+		
+		// The bot only cares about the messages from real users (not bots), either in DM or mentioning the bot in any non-DM text channels
+		// Care: not bot and (dm or mentioned)
+		// Don't care: bot or (not dm and not mentioned)
+		if (message.author.bot || (message.channel.type !== "DM" && !(message.content.startsWith(`<@!${client.user!.id}>`)) && !(message.content.startsWith(`<@${client.user!.id}>`)))) return;
+		
+		var cmd, msg, args = [];
+		// Take away the mention from the msssage if the bot was mentioned
+		if (message.content.startsWith(`<@`))
 		msg = message.content.replace((/^<@[^>]*> /),"");
-	else {
-		msg = message.content;
-	}
-	
-	// Exit if the message is empty apart from the mention
-	if (!msg.trim()) {
-		message.reply("Hey what's up?")
-		return;
-	}
-	
-	[cmd, ...args] = msg.trim().split(/[,\s]+/);
-
-	try {
-		switch (cmd.toLowerCase()) {
-			case "help":
-				showHelp(message);
-			break;
-			case "add":
-				addRecords(message, args);
-			break;
-			case "remove":
-			case "delete":
-				removeRecords(message, args);
-			break;
-			case "listmine":
-				listMine(message);
-			break;
-			case "whohas":
-				whoHas(message, args);
-			break;
-			case "echo":
-				message.reply("echo");
-			break;
+		else {
+			msg = message.content;
 		}
-		} catch (e) {
+		
+		// Exit if the message is empty apart from the mention
+		if (!msg.trim()) {
+			message.reply("Hey what's up?")
+			return;
+		}
+		
+		[cmd, ...args] = msg.trim().split(/[,\s]+/);
+		
+		try {
+			switch (cmd.toLowerCase()) {
+				case "help":
+					showHelp(message);
+				break;
+				case "add":
+					addRecords(message, args);
+				break;
+				case "remove":
+				case "delete":
+					removeRecords(message, args);
+				break;
+				case "listmine":
+					listMine(message);
+				break;
+				case "whohas":
+					whoHas(message, args);
+				break;
+				case "echo":
+					message.reply("echo");
+				break;
+			}
+		} catch (e: any) {
 			var notifyUser = (await client.users.fetch(config.discord.errorNotifyID));
 			notifyUser.send(`Error executing command "${msg}" entered by user ${message.author.tag}`);
 			notifyUser.send(e);
-	}
-	
-})
+		}
+
+	})
+})();
 
 /**
  * Show the help message to the user
  * @param {Message} message - message object returned by the client listener
  */
-function showHelp(message) {
+function showHelp(message: Message): void {
 	message.channel.send(`You can use the following commands:
 
 add <Title ID> [<Title ID>...]
@@ -105,7 +105,7 @@ Check the database and see if anyone who has tbe title ID(s). Multiple Title IDs
  * @param {string[]} args - Array of arguments in the user command
  * @returns void
  */
-async function addRecords(message, args) {
+async function addRecords(message: Message, args: string[]): Promise<void> {
 
 	// Exit if there is no argument provided
 	if (args.length == 0) {
@@ -123,7 +123,7 @@ async function addRecords(message, args) {
 		
 		// Check if the user exists in the users table. If not, add it first - otherwise titles cannot be added due to foreign keys constriant
 		let sql = 'SELECT userid FROM gnt_users WHERE userid = ?';
-		var [rows, fields] = await con.execute(sql, [userID]);
+		let [rows, fields] = await con.execute<RowDataPacket[]>(sql, [userID]);
 		if (rows.length == 0) {
 			sql = 'INSERT INTO gnt_users (userid, usertag) VALUES ?';
 			const [rows, fields] = await con.query(sql, [[[userID, userTag]]]);
@@ -133,7 +133,7 @@ async function addRecords(message, args) {
 		// Remove the titles that already exist in the titles table from toAdd[]
 		const toAddIntoDB = [], alreadyAdded = [];
 		sql = 'SELECT titleid FROM gnt_titles WHERE userid = ? AND titleid IN (?) ORDER BY titleid';
-		[rows, fields] = await con.query(sql, [userID, toAdd]);
+		[rows, fields] = await con.query<RowDataPacket[]>(sql, [userID, toAdd]);
 		for (const iterator of rows) {
 			toAdd.splice(toAdd.indexOf(iterator.titleid),1);
 			alreadyAdded.push(iterator.titleid);			
@@ -147,8 +147,8 @@ async function addRecords(message, args) {
 			}
 			
 			sql = `INSERT INTO gnt_titles (titleid, userid) VALUES ?`;
-			[rows, fields] = await con.query(sql, [toAddIntoDB]);
-			titlesAdded += parseInt(rows.affectedRows);
+			let [result, fields] = await con.query<OkPacket>(sql, [toAddIntoDB]);
+			titlesAdded += result.affectedRows;
 		}
 		outputMsgs.push(`${titlesAdded} title ID${titlesAdded > 1 ? "s have" : " has"} been added to the database`);
 		if (newContributor) outputMsgs.push("Thank you for your first contribution!");
@@ -165,9 +165,9 @@ async function addRecords(message, args) {
  * "listmine" command - List the user's own titles
  * @param {Message} message - Message object returned by the client listener
  */
-async function listMine(message) {
+async function listMine(message: Message): Promise<void> {
 	const sql = `SELECT titleid FROM gnt_titles WHERE userid = ? ORDER BY titleid`;
-	const [rows, fields] = await con.query(sql, [message.author.id]);
+	const [rows, fields] = await con.query<RowDataPacket[]>(sql, [message.author.id]);
 
 	const showResult = [];
 	for (const eachResult of rows) {
@@ -187,7 +187,7 @@ async function listMine(message) {
  * @param {string[]} args - Array of arguments in the user command
  * @returns void
  */
-async function removeRecords(message, args) {
+async function removeRecords(message: Message, args: string[]): Promise<void> {
 
 	// Exit if there is no argument provided
 	if (args.length == 0) {
@@ -200,7 +200,7 @@ async function removeRecords(message, args) {
 
 	if (toRemove.length > 0) {
 		var sql = `SELECT id FROM gnt_titles WHERE userid = ? AND titleid in (?)`;
-		var [rows, fields] = await con.query(sql, [message.author.id, toRemove]);
+		var [rows, fields] = await con.query<RowDataPacket[]>(sql, [message.author.id, toRemove]);
 		
 		for (const eachResult of rows) {
 			inDB.push(eachResult.id);
@@ -223,7 +223,7 @@ async function removeRecords(message, args) {
  * @param {string[]} args - Array of arguments in the user command
  * @returns void
  */
-async function whoHas(message, args) {
+async function whoHas(message: Message, args: string[]): Promise<void> {
 	if (args.length == 0) {
 		message.channel.send("Please tell me what title ID you would like to know about");
 		return;
@@ -241,7 +241,7 @@ async function whoHas(message, args) {
 		
 		// Get the userid of the users who have the titles requested
 		var sql = `SELECT userid FROM gnt_titles WHERE titleid = ?`;
-		var [rows, fields] = await con.query(sql, [titleID]);
+		var [rows, fields] = await con.query<RowDataPacket[]>(sql, [titleID]);
 		var userIDs = [];
 		for (const iterator of rows) {
 			userIDs.push(iterator.userid);
@@ -270,7 +270,7 @@ async function whoHas(message, args) {
  * @param {string[]} args - Array of strings from the user command
  * @returns {string[]} resultArr
  */
-function processTitleIDs(args) {
+function processTitleIDs(args: string[]): string[] {
 	const resultArr = [];
 	for (var videoCode of args) {
 		resultArr.push(videoCode.toUpperCase());
