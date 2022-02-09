@@ -29,12 +29,12 @@ client.on('messageCreate', async (message) => {
 	// The bot only cares about the messages from real users (not bots), either in DM or mentioning the bot in any non-DM text channels
 	// Care: not bot and (dm or mentioned)
 	// Don't care: bot or (not dm and not mentioned)
-	if (message.author.bot || (message.channel.type !== "DM" && !(message.content.startsWith(`<@!${client.user.id}>`)))) return;
+	if (message.author.bot || (message.channel.type !== "DM" && !(message.content.startsWith(`<@!${client.user.id}>`)) && !(message.content.startsWith(`<@${client.user.id}>`)))) return;
 	
 	var cmd, msg, args = [];
 	// Take away the mention from the msssage if the bot was mentioned
-	if (message.content.startsWith(`<@!${client.user.id}>`))
-		msg = message.content.replace((`<@!${client.user.id}>`),"");
+	if (message.content.startsWith(`<@`))
+		msg = message.content.replace((/^<@[^>]*> /),"");
 	else {
 		msg = message.content;
 	}
