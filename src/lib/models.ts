@@ -7,16 +7,16 @@ class Idol {
 }
 
 class Title {
-	idols: Idol[];
-	idolAgesU15: number[];
+	idols: Idol[] = [];
+	idolAgesU15: number[] = [];
 	titlesIncluded: Title[] = [];
-	cover: string;
+	cover = "";
 	
 	constructor (
-		id: string,
-		type: TitleType,
-		name: string,
-		releaseDate: string,
+		public id: string,
+		public type: TitleType,
+		public name: string,
+		public releaseDate: string,
 	) {}
 }
 
