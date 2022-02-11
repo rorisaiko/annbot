@@ -36,9 +36,6 @@ export class Bot {
 			
 			try {
 				switch (cmd.toLowerCase()) {
-					case "help":
-						this.showHelp(message);
-					break;
 					case "add":
 						this.addRecords(message, args);
 					break;
@@ -66,28 +63,6 @@ export class Bot {
 	
 	}
 
-
-	/**
-	 * Show the help message to the user
-	 * @param {Message} message - message object returned by the client listener
-	 */
-	private showHelp(message: Message): void {
-		message.channel.send(`You can use the following commands:
-
-	add <Title ID> [<Title ID>...]
-	Add one or more Title IDs into the database. Multiple Title IDs should be separated with spaces or commas.
-	Example: add SKIB-049 CBSKY-046
-
-	remove <Title ID]> [<Title ID>...]
-	Remove a Title ID that you added to the database before. Multiple Title IDs should be separated with spaces or commas.
-	Example: remove SKIB-049 CBSKY-046
-
-	listmine
-	List all Title IDs that you added.
-
-	whohas <Title ID> [<Title ID>...]
-	Check the database and see if anyone who has tbe title ID(s). Multiple Title IDs should be separated with spaces or commas`);
-	}
 
 	/**
 	 * User command "add" - Add titles to the database
