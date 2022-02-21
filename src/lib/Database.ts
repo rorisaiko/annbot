@@ -1,5 +1,5 @@
 import mysql, { RowDataPacket, OkPacket } from "mysql2";
-import { Pool } from "mysql2/promise"
+import { Pool } from "mysql2/promise";
 import config from "../config.json";
 
 export class Database {

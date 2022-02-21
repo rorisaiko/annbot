@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node ./prod/index.js",
-    "dev": "nodemon ./prod/index.js"
+    "dev": "npx nodemon ./src/index.ts"
   },
   "author": "Rorisaiko",
   "license": "MIT",
