@@ -1,4 +1,4 @@
-import {Client, Message} from 'discord.js';
+import {Client, Message, MessageEmbed} from 'discord.js';
 import config from "../config.json";
 import { processTitleIDs } from "./util"
 import { Database } from './Database';
@@ -51,6 +51,16 @@ export class Bot {
 					break;
 					case "echo":
 						message.reply("echo");
+					break;
+					case "info":
+						const subCmd = args.shift();
+						switch (subCmd) {
+							case "title":
+								this.infoTitle(message, args);
+							break;
+							default:
+								message.reply (`Sub-command "${subCmd}" not found`);
+						}
 					break;
 				}
 			} catch (e: any) {
@@ -229,4 +239,63 @@ export class Bot {
 			allowedMentions: {parse: []}
 		});
 	}
+
+	/**
+	 * "info title" command - Show info of a title
+	 * @param {Message} message - Message object returned by the client listener
+	 * @param {string[]} args - Array of arguments in the user command
+	 */
+	async infoTitle(message: Message<boolean>, args: string[]): Promise<void> {
+
+		const titleID = args.shift();
+
+		// Retrieve the title
+		let sql = 'SELECT jt.id, jtt.name titletype, jt.name, jt.releasedate, jt.dvdid, jt.bdid, jt.link_id, jt.coverurl, jt.producturl, jl.site, jl.coverurl as coverpath, jl.producturl as productpath '+
+					'FROM ji_title AS jt ' +
+						'JOIN ji_title_type jtt ON jt.type_id = jtt.id ' +
+						'LEFT JOIN ji_link jl ON jl.id = jt.link_id '+
+					'WHERE jt.id = ?';
+		const titleRows = await this.db.dbSelect(sql, titleID);
+
+		// Retrieve the idols in the title
+		sql = 'SELECT jt.id, jn.kanji, jn.eng, jti.age, jti.age_notes, ji.code idolcode '+
+				'FROM `ji_title` jt '+
+					'JOIN `ji_titleidol` jti ON jt.id = jti.title_id '+
+					'JOIN `ji_name` jn ON jn.id = jti.name_id '+
+					'JOIN ji_idol ji ON ji.id = jti.idol_id '+
+				'WHERE jt.id = ?';
+		const idolRows = await this.db.dbSelect(sql, titleID)
+
+		if(titleRows.length > 0) {
+			const title = titleRows[0];
+			const embedMsg = new MessageEmbed()
+				.setColor('#3498DB')
+				.setTitle(`${title.id} (${String(title.titletype).toUpperCase()})`)
+				.addField(`Title`, title.name, true);
+
+			if(title.link_id) {
+				if(String(title.link_id).startsWith('http')) embedMsg.setURL(title.producturl);
+				else embedMsg.setURL(title.productpath + title.producturl);
+			}
+			
+			if(title.releasedate) embedMsg.addField(`Release Date`, title.releasedate, true);	
+			
+			let idolArr: string[] = [];
+			for(let idolRow of idolRows) {
+				idolArr.push(`${idolRow.eng} (${idolRow.kanji})` + (idolRow.age ? ` - Age: ${idolRow.age}` : ''));
+			}
+			embedMsg.addField((idolArr.length > 1 ? `Idols` : `Idol`), idolArr.join("\n"));
+
+			if(title.coverurl) {
+				if(String(title.coverurl).startsWith("http")) embedMsg.setImage(title.coverurl);
+				else embedMsg.setImage(title.coverpath + title.coverurl);
+			} else {
+				embedMsg.addField('Cover', '(Sorry, no cover image yet)')
+			}
+			message.reply({embeds: [embedMsg]});
+		} else {
+			message.reply("Title not found");
+		}
+	}
+
 }
