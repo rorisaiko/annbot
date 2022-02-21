@@ -25,7 +25,8 @@ export class Database {
 			host: config.db.host,
 			user: config.db.user,
 			password: config.db.pass,
-			database: config.db.db
+			database: config.db.db,
+			dateStrings: true
 		}).promise();
 	}
 
