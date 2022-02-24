@@ -34,45 +34,50 @@ export class Bot {
 			
 			[cmd, ...args] = msg.trim().split(/[,\s]+/);
 			
-			try {
-				switch (cmd.toLowerCase()) {
-					case "add":
-						this.addRecords(message, args);
-					break;
-					case "remove":
-					case "delete":
-						this.removeRecords(message, args);
-					break;
-					case "listmine":
-						this.listMine(message);
-					break;
-					case "whohas":
-						this.whoHas(message, args);
-					break;
-					case "echo":
-						message.reply("echo");
-					break;
-					case "info":
-						const subCmd = args.shift();
-						switch (subCmd) {
-							case "title":
-								this.infoTitle(message, args);
-							break;
-							default:
-								message.reply (`Sub-command "${subCmd}" not found`);
-						}
-					break;
-				}
-			} catch (e: any) {
-				var notifyUser = (await this.client.users.fetch(config.discord.errorNotifyID));
-				notifyUser.send(`Error executing command "${msg}" entered by user ${message.author.tag}`);
-				notifyUser.send(e);
+			switch (cmd.toLowerCase()) {
+				case "add":
+					this.addRecords(message, args).catch(this.errorHandling.bind(this, message));
+				break;
+				case "remove":
+				case "delete":
+					this.removeRecords(message, args).catch(this.errorHandling.bind(this, message));
+				break;
+				case "listmine":
+					this.listMine(message).catch(this.errorHandling.bind(this, message));
+				break;
+				case "whohas":
+					this.whoHas(message, args).catch(this.errorHandling.bind(this, message));
+				break;
+				case "echo":
+					message.reply("echo");
+				break;
+				case "info":
+					const subCmd = args.shift();
+					switch (subCmd) {
+						case "title":
+							this.infoTitle(message, args).catch(this.errorHandling.bind(this, message));
+						break;
+						default:
+							message.reply (`Sub-command "${subCmd}" not found`);
+					}
+				break;
 			}
 	
 		});
 	
 	}
 
+	private async errorHandling(message: Message, e:any) {
+		var notifyUser = (await this.client.users.fetch(config.discord.errorNotifyID));
+		notifyUser.send(`Error executing command "${message}" entered by user ${message.author.tag}`);
+		if(typeof e === 'string') notifyUser.send(e);
+		else if(e instanceof Error) notifyUser.send(e.message);
+		console.log('----------------------------------');
+		console.log(Date().toString());
+		console.log(`Error executing command "${message}" entered by user ${message.author.tag}`)
+		console.log(e);
+		message.reply('Sorry, your command could not be executed successfully. The bot developer has been informed. Please try another command.')
+}
 
 	/**
 	 * User command "add" - Add titles to the database
