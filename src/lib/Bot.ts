@@ -1,7 +1,8 @@
-import {Client, Message, MessageEmbed} from 'discord.js';
+import {Client, Message, MessageEmbed, MessageCollector} from 'discord.js';
 import config from "../config.json";
 import { processTitleIDs } from "./util"
 import { Database } from './Database';
+import { Idol, idolNameResult} from "./models";
 
 export class Bot {
 
@@ -54,6 +55,9 @@ export class Bot {
 				case "info":
 					const subCmd = args.shift();
 					switch (subCmd) {
+						case "idol":
+							this.infoIdol(message, args).catch(this.errorHandling.bind(this, message));
+						break;
 						case "title":
 							this.infoTitle(message, args).catch(this.errorHandling.bind(this, message));
 						break;
@@ -303,4 +307,107 @@ export class Bot {
 		}
 	}
 
+	/**
+	 * Show the information of one of more idols
+	 * @param {Message} message - Message object returned by the message listener
+	 * @param {string[]} args - Command arguments
+	 */
+
+	private async infoIdol(message: Message, args: string[]): Promise<void> {
+		let idolName = '';
+		const tempStr = [], outputMsgs = [];
+		let retrieving = false;
+		
+		// Read the command arguments
+		for (let element of args) {
+			if (retrieving) {
+				if (element.endsWith('"') || element.endsWith('”')) {
+					retrieving = false;
+					tempStr.push(element.slice(0,-1));
+					idolName = tempStr.join(" ");
+					break;
+				} else {
+					tempStr.push(element);
+				}
+			} else {
+				if (element.startsWith('"') || element.startsWith('“')) {
+					retrieving = true;
+					tempStr.push(element.slice(1));
+				} else {
+					idolName = element;
+					break;
+				}
+			}
+		}
+
+		// Query the database
+		let sql = 'SELECT ji.id '+
+					'FROM ji_idol ji '+
+						'JOIN ji_idolname jin ON ji.id = jin.idol_id '+
+						'JOIN ji_name jn ON jin.name_id = jn.id '+
+					'WHERE jn.eng LIKE ? LIMIT 11';
+		let IDrows = await this.db.dbSelectArray(sql, `%${idolName}%`);
+		sql = 'SELECT ji.id, ji.dob_u15, jn.eng, jn.kanji, jin.primaryname '+
+				'FROM ji_idol ji '+
+					'JOIN ji_idolname jin ON ji.id = jin.idol_id '+
+					'JOIN ji_name jn ON jin.name_id = jn.id ' +
+				'WHERE ji.id IN ?';
+		let idolRows = await this.db.dbSelect(sql, [[IDrows.flat(1)]]) as idolNameResult[];
+		
+		if(!idolRows.length) {
+			message.reply("Idol name not found");
+			return;
+		}
+
+		// Populate the Idols[] array with the data retrieved from the database
+		const Idols: Idol[] = [];
+		let curIdol: Idol | undefined, curIdolID = '';
+		for (let row of idolRows) {
+			if(row.id !== curIdolID) {
+				curIdolID = row.id;
+				if(curIdol !== undefined) {
+					curIdol.name.sort(Idol.idolNameStructCompare);
+					Idols.push(curIdol);
+				}
+				curIdol = new Idol([]);
+				if(!row.dob_u15.startsWith('0'))
+					curIdol.dob = row.dob_u15;				
+			}
+			curIdol!.name.push({nameEng: row.eng, nameJpn: row.kanji, namePrimary: row.primaryname ? true : false});
+
+		}
+		curIdol!.name.sort(Idol.idolNameStructCompare);
+		Idols.push(curIdol!);
+
+		// Display the idols
+		const embedMsg = new MessageEmbed().setColor('#3498DB');
+		let names: string[] = [];
+		if(Idols.length > 1) {	// More than 1 idol was found
+			let idolOutput = '', DOBOutput = '';
+
+			for (let i = 0; i < Idols.length; i++) {
+				idolOutput += `${i+1}. `;
+				for (const curName of Idols[i].name)
+					names.push(`${curName.nameEng} (${curName.nameJpn})`);
+				idolOutput += names.join(' / ') + '\n';
+				if(Idols[i].dob)
+					idolOutput += `DOB: ${Idols[i].dob}\n`;
+				idolOutput += '\n';
+			}
+
+			idolOutput = idolOutput.slice(0, idolOutput.length-2) // Remove the last \n
+			embedMsg.setTitle('More than 1 idol record found')
+					.addField('Idols', idolOutput);
+		} else {				// Only 1 idol was found (Already returned right after the DB query if no idol was found)
+			let curIdol = Idols.shift()
+			if(!curIdol) return // There is no way that curIdol is undefined - just to stop TS from bitching about curIdol may be undefined
+			embedMsg.setTitle(`${curIdol.name[0].nameEng} (${curIdol!.name[0].nameJpn})`);
+			for (const curName of curIdol.name)
+				names.push(`${curName.nameEng} (${curName.nameJpn})`);
+			embedMsg.addField('Name', names.join(' / '));
+			if(curIdol.dob)
+				embedMsg.addField('DOB', `${curIdol.dob}`);
+		}
+		message.reply({embeds: [embedMsg]});
+	}
 }
