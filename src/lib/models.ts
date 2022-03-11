@@ -55,3 +55,11 @@ export enum TitleType {
 	'dvd-box',
 	'bd-box',
 }
+
+export interface menuOptions {
+	numbersUpTo: number,
+	hasPrevious?: boolean,
+	hasNext?: boolean,
+	hasStop?: boolean,
+	hasRestart?: boolean
+}

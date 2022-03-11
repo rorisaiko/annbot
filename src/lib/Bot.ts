@@ -3,8 +3,12 @@ import config from "../config.json";
 import { processTitleIDs } from "./util"
 import { Database } from './Database';
 import { Idol, idolNameResult} from "./models";
+import { Menu } from './Menu';
 
 export class Bot {
+
+	private activeMenus: Menu[] = [];
+	private activeMenuUsers: string[] = [];
 
 	constructor(private client: Client, private db: Database) {
 		this.main();
@@ -340,19 +344,15 @@ export class Bot {
 			}
 		}
 
-		// Query the database
-		let sql = 'SELECT ji.id '+
-					'FROM ji_idol ji '+
-						'JOIN ji_idolname jin ON ji.id = jin.idol_id '+
-						'JOIN ji_name jn ON jin.name_id = jn.id '+
-					'WHERE jn.eng LIKE ? LIMIT 11';
-		let IDrows = await this.db.dbSelectArray(sql, `%${idolName}%`);
-		sql = 'SELECT ji.id, ji.dob_u15, jn.eng, jn.kanji, jin.primaryname '+
-				'FROM ji_idol ji '+
-					'JOIN ji_idolname jin ON ji.id = jin.idol_id '+
-					'JOIN ji_name jn ON jin.name_id = jn.id ' +
-				'WHERE ji.id IN ?';
-		let idolRows = await this.db.dbSelect(sql, [[IDrows.flat(1)]]) as idolNameResult[];
+		// Get the idols with specified name
+		const IDrows = await this.db.getIdolsByName(idolName);
+
+		// Get the idol details of the idols retrived above
+		const idolRows = await this.db.getIdolDetailsByIdol(IDrows);
+
+		// Get 1 title per idol, if any, preferably with cover
+		////// Stopped here
+
 		
 		if(!idolRows.length) {
 			message.reply("Idol name not found");
@@ -382,7 +382,7 @@ export class Bot {
 		// Display the idols
 		const embedMsg = new MessageEmbed().setColor('#3498DB');
 		let names: string[] = [];
-		if(Idols.length > 1) {	// More than 1 idol was found
+		if(Idols.length > 1) {	// More than 1 idol were found
 			let idolOutput = '', DOBOutput = '';
 
 			for (let i = 0; i < Idols.length; i++) {
@@ -399,15 +399,17 @@ export class Bot {
 			embedMsg.setTitle('More than 1 idol record found')
 					.addField('Idols', idolOutput);
 		} else {				// Only 1 idol was found (Already returned right after the DB query if no idol was found)
-			let curIdol = Idols.shift()
-			if(!curIdol) return // There is no way that curIdol is undefined - just to stop TS from bitching about curIdol may be undefined
-			embedMsg.setTitle(`${curIdol.name[0].nameEng} (${curIdol!.name[0].nameJpn})`);
+			let curIdol = Idols.shift() ?? new Idol([]); // There is no way that curIdol is undefined - just to stop TS from bitching about curIdol may be undefined
+			embedMsg.setTitle(`${curIdol.name[0].nameEng} (${curIdol.name[0].nameJpn})`);
 			for (const curName of curIdol.name)
 				names.push(`${curName.nameEng} (${curName.nameJpn})`);
 			embedMsg.addField('Name', names.join(' / '));
 			if(curIdol.dob)
 				embedMsg.addField('DOB', `${curIdol.dob}`);
 		}
-		message.reply({embeds: [embedMsg]});
+		const newMsg = await message.reply({embeds: [embedMsg]});
+
+		// const curMenu = new Menu();
+		// curMenu.generate(newMsg, {numbersUpTo: 5, hasNext: true});
 	}
 }
