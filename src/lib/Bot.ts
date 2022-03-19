@@ -118,7 +118,8 @@ export class Bot {
 
 			// If there is still anything to add, add it to the database
 			if(toAdd.length) {
-				for (const iterator of toAdd) {
+				const deduplicated = [...new Set(toAdd)];
+				for (const iterator of deduplicated) {
 					toAddIntoDB.push([iterator, userID])
 				}
 				
