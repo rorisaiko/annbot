@@ -102,18 +102,14 @@ export class Bot {
 		if(toAdd.length > 0) {
 			
 			// Check if the user exists in the users table. If not, add it first - otherwise titles cannot be added due to foreign keys constriant
-			let sql = 'SELECT userid FROM gnt_users WHERE userid = ?';
-			let rows = await this.db.dbSelect(sql, [userID]);
-			if (rows.length == 0) {
-				sql = 'INSERT INTO gnt_users (userid, usertag) VALUES ?';
-				await this.db.dbInsDel(sql, [[[userID, userTag]]]);
+			if (!await this.db.gntIfUserExists(userID)) {
+				await this.db.gntAddUser(userID, userTag);				
 				newContributor = true;
 			}
 
 			// Remove the titles that already exist in the titles table from toAdd[]
-			const toAddIntoDB = [], alreadyAdded = [];
-			sql = 'SELECT titleid FROM gnt_titles WHERE userid = ? AND titleid IN (?) ORDER BY titleid';
-			rows = await this.db.dbSelect(sql, [userID, toAdd]);
+			const toAddIntoDB: [string, string][] = [], alreadyAdded: string[] = [];
+			const rows = await this.db.gntGetTitleIDsByUserIDAndTitleIDs(userID, toAdd);
 			for (const iterator of rows) {
 				toAdd.splice(toAdd.indexOf(iterator.titleid),1);
 				alreadyAdded.push(iterator.titleid);			
@@ -126,8 +122,7 @@ export class Bot {
 					toAddIntoDB.push([iterator, userID])
 				}
 				
-				sql = `INSERT INTO gnt_titles (titleid, userid) VALUES ?`;
-				let result = await this.db.dbInsDel(sql, [toAddIntoDB]);
+				let result = await this.db.gntAddTitles(toAddIntoDB);
 				titlesAdded += result.affectedRows;
 			}
 			outputMsgs.push(`${titlesAdded} title ID${titlesAdded > 1 ? "s have" : " has"} been added to the database`);
@@ -146,8 +141,7 @@ export class Bot {
 	 * @param {Message} message - Message object returned by the client listener
 	 */
 	private async listMine(message: Message): Promise<void> {
-		const sql = `SELECT titleid FROM gnt_titles WHERE userid = ? ORDER BY titleid`;
-		const rows = await this.db.dbSelect(sql, [message.author.id]);
+		const rows = await this.db.gntGetTitleIDsByUserID(message.author.id);
 
 		const showResult = [];
 		for (const eachResult of rows) {
@@ -179,15 +173,13 @@ export class Bot {
 		const inDB = [];
 
 		if (toRemove.length > 0) {
-			var sql = `SELECT id FROM gnt_titles WHERE userid = ? AND titleid in (?)`;
-			var rows = await this.db.dbSelect(sql, [message.author.id, toRemove]);
+			const rows = await this.db.gntGetIDsByUserIDAndTitleIDs(message.author.id, toRemove);
 			
 			for (const eachResult of rows) {
 				inDB.push(eachResult.id);
 			}
 			if (inDB.length > 0) {
-				sql = `DELETE FROM gnt_titles WHERE id IN (?)`;
-				await this.db.dbInsDel(sql,[inDB]);
+				await this.db.gntDelTitlesByID(inDB);
 			}
 			message.reply(`${inDB.length} Title ID${inDB.length > 1 ? "s have" : " has"} been removed from the database`);
 		}
@@ -220,8 +212,7 @@ export class Bot {
 		for (const titleID of toCheck) {
 			
 			// Get the userid of the users who have the titles requested
-			var sql = `SELECT userid FROM gnt_titles WHERE titleid = ?`;
-			var rows = await this.db.dbSelect(sql, [titleID]);
+			var rows = await this.db.gntGetUserIDsbyTitleID(titleID);
 			var userIDs = [];
 			for (const iterator of rows) {
 				userIDs.push(iterator.userid);
@@ -259,22 +250,16 @@ export class Bot {
 			return;
 		}
 
+		if(!titleID) {
+			message.reply('Please specify a title ID');
+			return;
+		}
+
 		// Retrieve the title
-		let sql = 'SELECT jt.id, jtt.name titletype, jt.name, jt.releasedate, jt.dvdid, jt.bdid, jt.link_id, jt.coverurl, jt.producturl, jl.site, jl.coverurl as coverpath, jl.producturl as productpath '+
-					'FROM ji_title AS jt ' +
-						'JOIN ji_title_type jtt ON jt.type_id = jtt.id ' +
-						'LEFT JOIN ji_link jl ON jl.id = jt.link_id '+
-					'WHERE jt.id = ?';
-		const titleRows = await this.db.dbSelect(sql, titleID);
+		const titleRows = await this.db.getTitleByTitleID(titleID);
 
 		// Retrieve the idols in the title
-		sql = 'SELECT jt.id, jn.kanji, jn.eng, jti.age, jti.age_notes, ji.code idolcode '+
-				'FROM `ji_title` jt '+
-					'JOIN `ji_titleidol` jti ON jt.id = jti.title_id '+
-					'JOIN `ji_name` jn ON jn.id = jti.name_id '+
-					'JOIN ji_idol ji ON ji.id = jti.idol_id '+
-				'WHERE jt.id = ?';
-		const idolRows = await this.db.dbSelect(sql, titleID)
+		const idolRows = await this.db.getIdolsByTitleID(titleID);
 
 		if(titleRows.length > 0) {
 			const title = titleRows[0];
