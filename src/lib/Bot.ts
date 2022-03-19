@@ -254,6 +254,11 @@ export class Bot {
 
 		const titleID = args.shift();
 
+		if(!titleID) {
+			message.reply('Please specify a title ID');
+			return;
+		}
+
 		// Retrieve the title
 		let sql = 'SELECT jt.id, jtt.name titletype, jt.name, jt.releasedate, jt.dvdid, jt.bdid, jt.link_id, jt.coverurl, jt.producturl, jl.site, jl.coverurl as coverpath, jl.producturl as productpath '+
 					'FROM ji_title AS jt ' +
