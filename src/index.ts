@@ -1,19 +1,17 @@
 import { Client } from "discord.js";
-import config from "./config.json";
 import { Bot } from "./lib/Bot";
 import { Database } from "./lib/Database"
 
-(async () => {	
+const configSrc = (process.argv[2] === 'dev' ? "./config.dev.json" : "./config.json");
+import(configSrc).then(async (config) => {
+
 	const client = new Client({ intents: ['DIRECT_MESSAGES', 'GUILD_MESSAGES', 'GUILDS', 'GUILD_MEMBERS'], partials: ['MESSAGE', 'CHANNEL'] });
 	await client.login(config.token);
-
-	let db = new Database();
 
 	client.once('ready', () => {
 		console.log("Logged in to Discord");
 	})
-	
-	let bot = new Bot(client, db);	
-	
-})();
 
+	const db = new Database(config.db.host, config.db.user, config.db.pass, config.db.db);
+	const bot = new Bot(client, db, config.discord.errorNotifyID);
+});

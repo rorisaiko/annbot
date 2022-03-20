@@ -1,21 +1,20 @@
 import mysql, { RowDataPacket, OkPacket } from "mysql2";
 import { Pool } from "mysql2/promise";
-import config from "../config.json";
 
 export class Database {
 	
 	private con!:Pool;
 
-	constructor() {
+	constructor(private host: string, private user:string, private pass:string, private db: string) {
 		this.dbConnect();
 	}
 
 	dbConnect(): void {
 		this.con = mysql.createPool({
-			host: config.db.host,
-			user: config.db.user,
-			password: config.db.pass,
-			database: config.db.db,
+			host: this.host,
+			user: this.user,
+			password: this.pass,
+			database: this.db,
 			dateStrings: true
 		}).promise();
 	}

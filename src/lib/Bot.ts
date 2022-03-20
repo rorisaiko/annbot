@@ -1,11 +1,10 @@
 import {Client, Message, MessageEmbed} from 'discord.js';
-import config from "../config.json";
 import { processTitleIDs } from "./util"
 import { Database } from './Database';
 
 export class Bot {
 
-	constructor(private client: Client, private db: Database) {
+	constructor(private client: Client, private db: Database, private errorNotifyID: string) {
 		this.main();
 		
 	}
@@ -68,7 +67,7 @@ export class Bot {
 	}
 
 	private async errorHandling(message: Message, e:any) {
-		var notifyUser = (await this.client.users.fetch(config.discord.errorNotifyID));
+		var notifyUser = (await this.client.users.fetch(this.errorNotifyID));
 		notifyUser.send(`Error executing command "${message}" entered by user ${message.author.tag}`);
 		if(typeof e === 'string') notifyUser.send(e);
 		else if(e instanceof Error) notifyUser.send(e.message);

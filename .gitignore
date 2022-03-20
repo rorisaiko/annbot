@@ -1,5 +1,5 @@
 /.vscode/
 /node_modules/
-/src/config.json
+/src/config*.json
 /nodemon.json
 /prod/
