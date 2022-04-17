@@ -400,6 +400,12 @@ export class Bot {
 			msgChannel.send({embeds: [embedMsg], allowedMentions: {parse: []}});
 		}
 
+		// Check if the title is in gntTitle. If not, add it.
+		const result = await this.db.gntGetTitleIDsByUserIDAndTitleIDs(sharedItem.userID, [sharedItem.titleID])
+		if(!result.length) {
+			await this.db.gntAddTitles([[sharedItem.titleID, sharedItem.userID]]);
+		}
+
 	}
 
 }
