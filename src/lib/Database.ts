@@ -72,6 +72,9 @@ export class Database {
 		return await this.dbInsDel(sql, [toAdd]);
 	}
 
+	/**
+	 * @returns [id, titletype, name, releasedate, dvdid, dbid, link_id, coverurl, producturl, site, coverpath, productpath]
+	 */
 	async getTitleByTitleID(titleID: string): Promise<mysql.RowDataPacket[]>{
 		const sql = 'SELECT jt.id, jtt.name titletype, jt.name, jt.releasedate, jt.dvdid, jt.bdid, jt.link_id, jt.coverurl, jt.producturl, jl.site, jl.coverurl as coverpath, jl.producturl as productpath '+
 					'FROM ji_title AS jt ' +
@@ -88,7 +91,7 @@ export class Database {
 						'JOIN `ji_name` jn ON jn.id = jti.name_id '+
 						'JOIN ji_idol ji ON ji.id = jti.idol_id '+
 					'WHERE jt.id = ?';
-		return await this.dbSelect(sql, titleID)
+		return await this.dbSelect(sql, titleID);
 	}
 
 

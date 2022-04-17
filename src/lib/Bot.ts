@@ -76,7 +76,7 @@ export class Bot {
 		console.log(`Error executing command "${message}" entered by user ${message.author.tag}`)
 		console.log(e);
 		message.reply('Sorry, your command could not be executed successfully. The bot developer has been informed. Please try another command.')
-}
+	}
 
 	/**
 	 * User command "add" - Add titles to the database
