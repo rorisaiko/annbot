@@ -20,6 +20,17 @@ class Title {
 	) {}
 }
 
+export class SharedItem {
+	titleID = '';
+	url = '';
+	pwd = '';
+	bitRate = '';
+	size = '';
+	length = '';
+	userID = '';
+	channel = '';
+}
+
 export enum TitleType {
 	'dvd',
 	'bd',

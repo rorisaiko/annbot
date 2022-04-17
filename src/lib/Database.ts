@@ -94,6 +94,19 @@ export class Database {
 		return await this.dbSelect(sql, titleID);
 	}
 
+	async getChannelIDByName(channelName: string): Promise<string[]> {
+		const sql = 'SELECT jc.channelID ' +
+					'FROM ji_channel jc ' +
+					'WHERE jc.name = ?';
+		const RDPResult = await this.dbSelectArray(sql, channelName);
+		return RDPResult.flat() as any[] as string[];		
+	}
+
+	async getAllChannelIDs(): Promise<string[]> {
+		const sql = 'SELECT DISTINCT channelID FROM `ji_channel`';
+		const RDPResult = await this.dbSelectArray(sql, '');
+		return RDPResult.flat() as any[] as string[];
+	}
 
 }
 

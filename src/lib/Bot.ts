@@ -1,6 +1,7 @@
-import {Client, Message, MessageEmbed} from 'discord.js';
+import {Client, Message, MessageEmbed, TextChannel} from 'discord.js';
 import { processTitleIDs } from "./util"
 import { Database } from './Database';
+import { SharedItem } from './models';
 
 export class Bot {
 
@@ -59,6 +60,9 @@ export class Bot {
 						default:
 							message.reply (`Sub-command "${subCmd}" not found`);
 					}
+				break;
+				case "share":
+					this.share(message, args).catch(this.errorHandling.bind(this, message));
 				break;
 			}
 	
@@ -291,6 +295,111 @@ export class Bot {
 		} else {
 			message.reply("Title not found");
 		}
+	}
+
+	async share(message: Message<boolean>, args: string[]): Promise<void> {
+		if(!args.length)
+		{
+			message.reply('Please specify a title ID');
+			return;
+		}
+
+		let inProgress = '', sharedItem = new SharedItem();
+
+		// Process the command arguments
+		while(args.length > 0) {
+			const curArg = args.shift() ?? ''; // Never be null, just to stop TS from complaining about curArg may be null
+			if(curArg.startsWith('-')) {
+				if(inProgress) {
+					message.reply(`Invalid syntax: parameter ${inProgress} has no value`);
+					return;
+				} else {
+					inProgress = curArg.slice(1);
+				}
+			}
+			else {
+				if(inProgress) {
+					switch (inProgress.toLowerCase()) {
+						case 'url':
+							sharedItem.url = curArg.toLowerCase();
+							break;
+						case 'password':
+							sharedItem.pwd = curArg;
+							break;
+						case 'bitrate':
+							sharedItem.bitRate = curArg;
+							break;
+						case 'size':
+							sharedItem.size = curArg;
+							break;
+						case 'length':
+							sharedItem.length = curArg;
+							break;
+						case 'category':
+							const category = curArg.toLowerCase();
+							const resultArr = await this.db.getChannelIDByName(category);
+							if(resultArr)
+								sharedItem.channel = resultArr[0];
+							else {
+								message.reply(`Sorry, the category ${category} is invalid.`);
+								return;
+							}
+							break;
+						default:
+							message.reply(`Invalid parameter: ${inProgress}`);
+							return;
+					}
+					inProgress = '';
+				} else {
+					if(!sharedItem.titleID) {
+						sharedItem.titleID = curArg.toUpperCase();
+					} else {
+						message.reply("More than one Title IDs were detected. Please check your command.");
+						return;
+					}
+				}
+			}
+		}
+
+		// Check if URL is missing
+		if(!sharedItem.url) {
+			message.reply("URL is missing. Please check your command");
+			return;
+		}
+
+		sharedItem.userID = message.author.id;
+
+		// Check if the "category" parameter exists if it is a DM
+		if(message.channel.type === 'DM' &&  !sharedItem.channel) {
+			message.reply('Parameter "category" is missing. Please either run this command in an appropriate "video-downloads" channel, or include the "category" parameter.');
+			return;
+		}
+
+		// Check if the command is executed in a correct channel if it is not a DM
+		if(message.channel.type === 'GUILD_TEXT') {
+			const correctChannels = await this.db.getAllChannelIDs();
+			if(correctChannels.includes(message.channelId)) {
+				sharedItem.channel = message.channelId;
+			} else {
+				message.reply('Please either run this command in a DM with the bot, or in any of the video-download channels');
+				return;
+			}
+		}
+
+		const msgChannel = this.client.channels.cache.get(sharedItem.channel);
+		if(msgChannel instanceof TextChannel) {
+			const embedMsg = new MessageEmbed()
+				.setColor('DARK_GREEN')
+				.setTitle(`${sharedItem.titleID}`)
+				.addField('Size:', sharedItem.size ? sharedItem.size : '-', true)
+				.addField('Length:', sharedItem.length ? sharedItem.length : '-', true)
+				.addField('Bitrate:', sharedItem.bitRate ? sharedItem.bitRate : '-', true)
+				.addField('Link:', sharedItem.url)
+				.addField('Password:', sharedItem.pwd ? sharedItem.pwd : '-', true)
+				.addField('Shared by:', `<@${sharedItem.userID}>`, true);
+			msgChannel.send({embeds: [embedMsg], allowedMentions: {parse: []}});
+		}
+
 	}
 
 }
