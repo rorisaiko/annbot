@@ -244,14 +244,16 @@ export class Bot {
 	 * "info title" command - Show info of a title
 	 * @param {Message} message - Message object returned by the client listener
 	 * @param {string[]} args - Array of arguments in the user command
+	 * @param {TextChannel} shareChannel - TextChannel object. Only required if this function is called by the share function
+	 * @returns {boolean} Whether a title is found
 	 */
-	async infoTitle(message: Message<boolean>, args: string[]): Promise<void> {
+	async infoTitle(message: Message<boolean>, args: string[], shareChannel?: TextChannel): Promise<boolean> {
 
 		const titleID = args.shift();
 
 		if(!titleID) {
 			message.reply('Please specify a title ID');
-			return;
+			return false;
 		}
 
 		if(!titleID) {
@@ -291,9 +293,18 @@ export class Bot {
 			} else {
 				embedMsg.addField('Cover', '(Sorry, no cover image yet)')
 			}
-			message.reply({embeds: [embedMsg]});
+			
+			if(shareChannel) {
+				shareChannel.send({embeds: [embedMsg]});
+				return true;
+			} else {
+				message.reply({embeds: [embedMsg]});
+				return true;
+			}
 		} else {
-			message.reply("Title not found");
+			if(!shareChannel)
+				message.reply("Title not found");
+			return false;
 		}
 	}
 
@@ -386,19 +397,17 @@ export class Bot {
 			}
 		}
 
-		const msgChannel = this.client.channels.cache.get(sharedItem.channel);
-		if(msgChannel instanceof TextChannel) {
-			const embedMsg = new MessageEmbed()
-				.setColor('DARK_GREEN')
-				.setTitle(`${sharedItem.titleID}`)
-				.addField('Size:', sharedItem.size ? sharedItem.size : '-', true)
-				.addField('Length:', sharedItem.length ? sharedItem.length : '-', true)
-				.addField('Bitrate:', sharedItem.bitRate ? sharedItem.bitRate : '-', true)
-				.addField('Link:', sharedItem.url)
-				.addField('Password:', sharedItem.pwd ? sharedItem.pwd : '-', true)
-				.addField('Shared by:', `<@${sharedItem.userID}>`, true);
-			msgChannel.send({embeds: [embedMsg], allowedMentions: {parse: []}});
-		}
+		const msgChannel = this.client.channels.cache.get(sharedItem.channel) as TextChannel;
+		const embedMsg = new MessageEmbed()
+			.setColor('DARK_GREEN')
+			.setTitle(`${sharedItem.titleID}`)
+			.addField('Size:', sharedItem.size ? sharedItem.size : '-', true)
+			.addField('Length:', sharedItem.length ? sharedItem.length : '-', true)
+			.addField('Bitrate:', sharedItem.bitRate ? sharedItem.bitRate : '-', true)
+			.addField('Link:', sharedItem.url)
+			.addField('Password:', sharedItem.pwd ? sharedItem.pwd : '-', true)
+			.addField('Shared by:', `<@${sharedItem.userID}>`, true);
+		msgChannel.send({embeds: [embedMsg], allowedMentions: {parse: []}});
 
 		// Check if the title is in gntTitle. If not, add it.
 		const result = await this.db.gntGetTitleIDsByUserIDAndTitleIDs(sharedItem.userID, [sharedItem.titleID])
@@ -406,6 +415,10 @@ export class Bot {
 			await this.db.gntAddTitles([[sharedItem.titleID, sharedItem.userID]]);
 		}
 
+		// Post "title info" command to the download channel if title is found
+		if(!await this.infoTitle(message, [sharedItem.titleID], msgChannel)) {
+			message.reply('Thank you for sharing. This title is not found in the database yet. Please also submit additional info in the download info, e.g. idol name(s), age(s), cover, etc.')
+		}
 	}
 
 }
