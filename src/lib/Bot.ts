@@ -432,6 +432,7 @@ export class Bot {
 		const embedMsg = new MessageEmbed()
 			.setColor('DARK_GREEN')
 			.setTitle(`${sharedItem.titleID}`)
+			.setURL(sharedItem.url)
 			.addField('Size:', sharedItem.size ? sharedItem.size : '-', true)
 			.addField('Length:', sharedItem.length ? sharedItem.length : '-', true)
 			.addField('Bitrate:', sharedItem.bitRate ? sharedItem.bitRate : '-', true)
