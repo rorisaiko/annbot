@@ -32,7 +32,7 @@ export class Bot {
 				return;
 			}
 			
-			[cmd, ...args] = msg.trim().split(/[,\s]+/);
+			[cmd, ...args] = msg.trim().split(/\s+/);
 			
 			switch (cmd.toLowerCase()) {
 				case "add":
@@ -315,11 +315,33 @@ export class Bot {
 			return;
 		}
 
-		let inProgress = '', sharedItem = new SharedItem();
+		let inProgress = '', sharedItem = new SharedItem(), inQuote = false, quoteText = '';
 
 		// Process the command arguments
 		while(args.length > 0) {
-			const curArg = args.shift() ?? ''; // Never be null, just to stop TS from complaining about curArg may be null
+			let curArg = args.shift() ?? ''; // Never be null, just to stop TS from complaining about curArg may be null
+
+			// Parse text in double-quotation marks
+			if(curArg.startsWith('"')) {
+				inQuote = true;
+				quoteText = curArg.slice(1);
+				continue;
+			}
+			if(inQuote) {
+				if(curArg.endsWith('"')) {
+					quoteText += ` ${curArg.slice(0,-1)}`;
+					inQuote = false;
+					curArg = quoteText.slice(0,255); // Only the first 255 characters are captured
+					quoteText = '';
+					if(curArg.length > 255)
+						message.reply(`Quoted string is longer than 255 characters. Only the following text will be saved:\n${curArg}`);
+				}
+				else {
+					quoteText += ` ${curArg}`;
+					continue;
+				}
+			}
+
 			if(curArg.startsWith('-')) {
 				if(inProgress) {
 					message.reply(`Invalid syntax: parameter ${inProgress} has no value`);
@@ -356,6 +378,10 @@ export class Bot {
 								return;
 							}
 							break;
+						case 'comment':
+						case 'comments':
+							sharedItem.comments = curArg;
+							break;
 						default:
 							message.reply(`Invalid parameter: ${inProgress}`);
 							return;
@@ -370,6 +396,11 @@ export class Bot {
 					}
 				}
 			}
+		}
+
+		if(inQuote) {
+			message.reply("Unterminated string detected. Did you forget the closing double-quotation mark? Please check your command.");
+			return;
 		}
 
 		// Check if URL is missing
@@ -407,6 +438,10 @@ export class Bot {
 			.addField('Link:', sharedItem.url)
 			.addField('Password:', sharedItem.pwd ? sharedItem.pwd : '-', true)
 			.addField('Shared by:', `<@${sharedItem.userID}>`, true);
+		
+		if(sharedItem.comments)
+			embedMsg.addField('Comments:', sharedItem.comments);
+
 		msgChannel.send({embeds: [embedMsg], allowedMentions: {parse: []}});
 
 		// Check if the title is in gntTitle. If not, add it.
