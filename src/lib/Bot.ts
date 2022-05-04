@@ -433,11 +433,11 @@ export class Bot {
 			.setColor('DARK_GREEN')
 			.setTitle(`${sharedItem.titleID}`)
 			.setURL(sharedItem.url)
-			.addField('Size:', sharedItem.size ? sharedItem.size : '-', true)
-			.addField('Length:', sharedItem.length ? sharedItem.length : '-', true)
-			.addField('Bitrate:', sharedItem.bitRate ? sharedItem.bitRate : '-', true)
+			.addField('Size:', sharedItem.size ?? '-', true)
+			.addField('Length:', sharedItem.length ?? '-', true)
+			.addField('Bitrate:', sharedItem.bitRate ?? '-', true)
 			.addField('Link:', sharedItem.url)
-			.addField('Password:', sharedItem.pwd ? sharedItem.pwd : '-', true)
+			.addField('Password:', sharedItem.pwd ?? '-', true)
 			.addField('Shared by:', `<@${sharedItem.userID}>`, true);
 		
 		if(sharedItem.comments)
