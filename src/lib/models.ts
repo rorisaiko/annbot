@@ -28,7 +28,9 @@ export class SharedItem {
 	size = '';
 	length = '';
 	userID = '';
+	date = new Date();
 	channel = '';
+	comments = '';
 }
 
 export enum TitleType {

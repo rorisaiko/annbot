@@ -1,5 +1,6 @@
 import mysql, { RowDataPacket, OkPacket } from "mysql2";
 import { Pool } from "mysql2/promise";
+import { SharedItem } from "./models";
 
 export class Database {
 	
@@ -15,6 +16,7 @@ export class Database {
 			user: this.user,
 			password: this.pass,
 			database: this.db,
+			timezone: 'Z',
 			dateStrings: true
 		}).promise();
 	}
@@ -94,6 +96,51 @@ export class Database {
 		return await this.dbSelect(sql, titleID);
 	}
 
+	async addShare(sharedItem: SharedItem): Promise<boolean> {
+		const sql = 'INSERT INTO ji_share (titleid, url, pwd, bitrate, size, length, userid, date, channel, comments) VALUES ?'
+		const okpResult = await this.dbInsDel(sql, [[[sharedItem.titleID, sharedItem.url, sharedItem.pwd, sharedItem.bitRate, sharedItem.size, sharedItem.length, sharedItem.userID, new Date(), sharedItem.channel, sharedItem.comments]]])
+		return (okpResult.affectedRows > 0)
+	}
+	
+	async getShareByTitleIDAndUserID(titleID: string, userID: string): Promise<SharedItem | undefined> {
+		const sql = 'SELECT titleid, url, pwd, bitrate, size, length, userid, date, channel, comments ' +
+					'FROM ji_share ' +
+					'WHERE titleid = ? AND userid = ?';
+		const rdpResult = await this.dbSelect(sql, [titleID, userID]);
+
+		if(rdpResult.length > 0) {
+			const sharedItem = new SharedItem();
+			sharedItem.titleID = rdpResult[0].titleid;
+			sharedItem.url = rdpResult[0].url;
+			sharedItem.pwd = rdpResult[0].pwd;
+			sharedItem.bitRate = rdpResult[0].bitrate;
+			sharedItem.size = rdpResult[0].size;
+			sharedItem.length = rdpResult[0].length;
+			sharedItem.userID = rdpResult[0].userid;
+			sharedItem.date = rdpResult[0].date;
+			sharedItem.channel = (await this.getChannelIDByID(rdpResult[0].channel))[0];
+			sharedItem.comments = rdpResult[0].comments;
+			return sharedItem;
+		}
+		else
+			return;
+	}
+
+	async updateShare(sharedItem: SharedItem): Promise<boolean> {
+		const sql = 'UPDATE ji_share SET url = ?, pwd = ?, bitrate = ?, size = ?, length = ?, date = ?, channel = ?, comments = ? ' +
+					'WHERE titleid = ? AND userid = ?';
+		const okpResult = await this.dbInsDel(sql, [sharedItem.url, sharedItem.pwd, sharedItem.bitRate, sharedItem.size, sharedItem.length, new Date(), sharedItem.channel, sharedItem.comments, sharedItem.titleID, sharedItem.userID])
+		return (okpResult.affectedRows > 0);
+	}
+
+	async getChannelIDByID(channelID: string): Promise<string[]> {
+		const sql = 'SELECT jc.channelID ' +
+					'FROM ji_channel jc ' +
+					'WHERE jc.id = ?';
+		const rdpResult = await this.dbSelectArray(sql, channelID);
+		return rdpResult.flat() as any[] as string[];		
+	}
+	
 	async getChannelIDByName(channelName: string): Promise<string[]> {
 		const sql = 'SELECT jc.channelID ' +
 					'FROM ji_channel jc ' +

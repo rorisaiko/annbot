@@ -33,7 +33,8 @@ export class Bot {
 			}
 			
 			[cmd, ...args] = msg.trim().split(/\s+/);
-			
+			let subCmd = '';
+
 			switch (cmd.toLowerCase()) {
 				case "add":
 					this.addRecords(message, args).catch(this.errorHandling.bind(this, message));
@@ -52,7 +53,7 @@ export class Bot {
 					message.reply("echo");
 				break;
 				case "info":
-					const subCmd = args.shift();
+					subCmd = args.shift()!;					
 					switch (subCmd) {
 						case "title":
 							this.infoTitle(message, args).catch(this.errorHandling.bind(this, message));
@@ -62,8 +63,19 @@ export class Bot {
 					}
 				break;
 				case "share":
-					this.share(message, args).catch(this.errorHandling.bind(this, message));
-				break;
+					if(!args.length) {
+						this.shareAdd(message, args).catch(this.errorHandling.bind(this, message));
+						message.reply("Missing sub-command for 'info'");
+						return;
+					}
+					subCmd = args.shift()!;
+					switch(subCmd) {
+						case "add":
+							this.shareAdd(message, args).catch(this.errorHandling.bind(this, message));
+							break;
+					}
+					break;
+				
 			}
 	
 		});
@@ -308,7 +320,7 @@ export class Bot {
 		}
 	}
 
-	async share(message: Message<boolean>, args: string[]): Promise<void> {
+	async shareAdd(message: Message<boolean>, args: string[]): Promise<void> {
 		if(!args.length)
 		{
 			message.reply('Please specify a title ID');
@@ -454,6 +466,14 @@ export class Bot {
 		// Post "title info" command to the download channel if title is found
 		if(!await this.infoTitle(message, [sharedItem.titleID], msgChannel)) {
 			message.reply('Thank you for sharing. This title is not found in the database yet. Please also submit additional info in the download info, e.g. idol name(s), age(s), cover, etc.')
+		}
+
+		// Write to database
+		if(await this.db.getShareByTitleIDAndUserID(sharedItem.titleID, sharedItem.userID)) {
+			await this.db.updateShare(sharedItem);
+		}
+		else {
+			await this.db.addShare(sharedItem);
 		}
 	}
 
