@@ -20,6 +20,8 @@ export class Database {
 			dateStrings: true
 		}).promise();
 	}
+
+	// Common functions ----------
 	
 	private async dbSelect(sql: string, data: any): Promise<RowDataPacket[]> {
 		return (await this.con.query<RowDataPacket[]>(sql, data))[0];
@@ -32,6 +34,8 @@ export class Database {
 	private async dbInsDel(sql: string, data: any): Promise<OkPacket> {
 		return (await this.con.query<OkPacket>(sql, data))[0];
 	}
+
+	// GNT section ---------------
 
 	async gntDelTitlesByID(id: string[]): Promise<OkPacket> {
 		const sql = `DELETE FROM gnt_titles WHERE id IN (?)`;
@@ -74,6 +78,8 @@ export class Database {
 		return await this.dbInsDel(sql, [toAdd]);
 	}
 
+	// Data section --------------
+
 	/**
 	 * @returns [id, titletype, name, releasedate, dvdid, dbid, link_id, coverurl, producturl, site, coverpath, productpath]
 	 */
@@ -95,6 +101,8 @@ export class Database {
 					'WHERE jt.id = ?';
 		return await this.dbSelect(sql, titleID);
 	}
+
+	// Share section -------------
 
 	async addShare(sharedItem: SharedItem): Promise<boolean> {
 		const sql = 'INSERT INTO ji_share (titleid, url, pwd, bitrate, size, length, userid, date, channel, comments) VALUES ?'
@@ -132,6 +140,8 @@ export class Database {
 		const okpResult = await this.dbInsDel(sql, [sharedItem.url, sharedItem.pwd, sharedItem.bitRate, sharedItem.size, sharedItem.length, new Date(), sharedItem.channel, sharedItem.comments, sharedItem.titleID, sharedItem.userID])
 		return (okpResult.affectedRows > 0);
 	}
+
+	// Discord section -----------
 
 	async getChannelIDByID(channelID: string): Promise<string[]> {
 		const sql = 'SELECT jc.channelID ' +

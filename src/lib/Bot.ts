@@ -320,6 +320,12 @@ export class Bot {
 		}
 	}
 
+	/**
+	 * "Share add" command for sharing a download link
+	 * @param message - Message object returned by the client listener
+	 * @param args - Array of the arguments in the user command
+	 * @returns Nothing
+	 */
 	async shareAdd(message: Message<boolean>, args: string[]): Promise<void> {
 		if(!args.length)
 		{
