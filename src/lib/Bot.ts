@@ -38,30 +38,30 @@ export class Bot {
 			switch (cmd.toLowerCase()) {
 				case "add":
 					this.addRecords(message, args).catch(this.errorHandling.bind(this, message));
-				break;
+					break;
 				case "remove":
 				case "delete":
 					this.removeRecords(message, args).catch(this.errorHandling.bind(this, message));
-				break;
+					break;
 				case "listmine":
 					this.listMine(message).catch(this.errorHandling.bind(this, message));
-				break;
+					break;
 				case "whohas":
 					this.whoHas(message, args).catch(this.errorHandling.bind(this, message));
-				break;
+					break;
 				case "echo":
 					message.reply("echo");
-				break;
+					break;
 				case "info":
 					subCmd = args.shift()!;					
 					switch (subCmd) {
 						case "title":
 							this.infoTitle(message, args).catch(this.errorHandling.bind(this, message));
-						break;
+							break;
 						default:
 							message.reply (`Sub-command "${subCmd}" not found`);
 					}
-				break;
+					break;
 				case "share":
 					if(!args.length) {
 						this.shareAdd(message, args).catch(this.errorHandling.bind(this, message));
