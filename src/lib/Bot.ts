@@ -297,7 +297,8 @@ export class Bot {
 			for(let idolRow of idolRows) {
 				idolArr.push(`${idolRow.eng} (${idolRow.kanji})` + (idolRow.age ? ` - Age: ${idolRow.age}` : ''));
 			}
-			embedMsg.addField((idolArr.length > 1 ? `Idols` : `Idol`), idolArr.join("\n"));
+			if(idolArr.length)
+				embedMsg.addField((idolArr.length > 1 ? `Idols` : `Idol`), idolArr.join("\n"));
 
 			if(title.coverurl) {
 				if(String(title.coverurl).startsWith("http")) embedMsg.setImage(title.coverurl);
