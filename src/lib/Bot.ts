@@ -250,11 +250,6 @@ export class Bot {
 			return;
 		}
 
-		if(!titleID) {
-			message.reply('Please specify a title ID');
-			return;
-		}
-
 		// Retrieve the title
 		const titleRows = await this.db.getTitleByTitleID(titleID);
 
