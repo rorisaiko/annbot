@@ -293,7 +293,7 @@ export class Bot {
 			
 			if(title.releasedate) embedMsg.addField(`Release Date`, title.releasedate, true);	
 			
-			let idolArr: string[] = [];
+			const idolArr: string[] = [];
 			for(let idolRow of idolRows) {
 				idolArr.push(`${idolRow.eng} (${idolRow.kanji})` + (idolRow.age ? ` - Age: ${idolRow.age}` : ''));
 			}
