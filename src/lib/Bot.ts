@@ -53,6 +53,10 @@ export class Bot {
 					message.reply("echo");
 					break;
 				case "info":
+					if(!args.length) {
+						message.reply("Missing sub-command for 'info'");
+						return;	
+					}
 					subCmd = args.shift()!;					
 					switch (subCmd) {
 						case "title":
