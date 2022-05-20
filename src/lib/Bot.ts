@@ -1,7 +1,7 @@
 import {Client, Message, MessageEmbed, TextChannel} from 'discord.js';
 import { processTitleIDs } from "./util"
 import { Database } from './Database';
-import { SharedItem } from './models';
+import { CmdInfo, OptionPair, SharedItem } from './models';
 
 export class Bot {
 
@@ -96,6 +96,82 @@ export class Bot {
 		console.log(`Error executing command "${message}" entered by user ${message.author.tag}`)
 		console.log(e);
 		message.reply('Sorry, your command could not be executed successfully. The bot developer has been informed. Please try another command.')
+	}
+
+	private parseCmd(args: string[]): CmdInfo {
+
+		let inQuote = false, quoteText = '';
+		let optionPairArr: OptionPair[] = [];
+		let paramArr: string[] = [];
+		let curOption = new OptionPair();
+		const curCmdInfo = new CmdInfo();
+		
+		while(args.length > 0) {
+			
+			let curArg = args.shift()!;
+
+			if(inQuote) {
+				if(curArg.endsWith('"')) {
+					quoteText += ` ${curArg.slice(0,-1)}`;
+					if(curOption.option) {
+						curOption.valueTooLong = quoteText.length > 255;
+						curOption.value = quoteText.slice(0,255); // Only the first 255 characters are captured
+						optionPairArr.push(curOption);
+						curOption = new OptionPair();
+					} else {
+						paramArr.push(quoteText);
+					}
+					inQuote = false;
+					quoteText = '';
+				} else {
+					quoteText += ` ${curArg}`;
+				}
+			} else {
+				if(curArg.startsWith('"')) {
+					if(curArg.endsWith('"')) {
+						quoteText = `${curArg.slice(1,-1)}`;
+						if(curOption.option) {
+							curOption.valueTooLong = quoteText.length > 255;
+							curOption.value = quoteText.slice(0,255); // Only the first 255 characters are captured
+							optionPairArr.push(curOption);
+							curOption = new OptionPair();
+						} else {
+							paramArr.push(quoteText);
+						}
+						quoteText = '';
+					} else {
+						inQuote = true;
+						quoteText = curArg.slice(1);
+					}
+				} else if(curArg.startsWith('-')) {
+					if(curOption.option) {
+						optionPairArr.push(curOption);
+						curOption = new OptionPair();
+					}
+					curOption.option = curArg.slice(1).toLowerCase();
+				} else {
+					if(curOption.option) {
+						curOption.value = curArg;
+						optionPairArr.push(curOption);
+						curOption = new OptionPair();
+					} else {
+						paramArr.push(curArg);
+					}
+				}
+			}	
+		}
+
+		if(inQuote) {
+			curCmdInfo.errorMsg = 'Unterminated quoted-text detected. Please check your command and try again.';
+			return curCmdInfo;
+		}
+
+		if(curOption.option)
+			optionPairArr.push(curOption);
+
+		curCmdInfo.params = paramArr;
+		curCmdInfo.options = optionPairArr;
+		return curCmdInfo;
 	}
 
 	/**
@@ -327,98 +403,65 @@ export class Bot {
 	 * @returns Nothing
 	 */
 	async shareAdd(message: Message<boolean>, args: string[]): Promise<void> {
-		if(!args.length)
-		{
-			message.reply('Please specify a title ID');
-			return;
-		}
 
 		let inProgress = '', sharedItem = new SharedItem(), inQuote = false, quoteText = '';
 
-		// Process the command arguments
-		while(args.length > 0) {
-			let curArg = args.shift() ?? ''; // Never be null, just to stop TS from complaining about curArg may be null
+		const cmdInfo = this.parseCmd(args);
 
-			// Parse text in double-quotation marks
-			if(curArg.startsWith('"')) {
-				inQuote = true;
-				quoteText = curArg.slice(1);
-				continue;
-			}
-			if(inQuote) {
-				if(curArg.endsWith('"')) {
-					quoteText += ` ${curArg.slice(0,-1)}`;
-					inQuote = false;
-					curArg = quoteText.slice(0,255); // Only the first 255 characters are captured
-					quoteText = '';
-					if(curArg.length > 255)
-						message.reply(`Quoted string is longer than 255 characters. Only the following text will be saved:\n${curArg}`);
-				}
-				else {
-					quoteText += ` ${curArg}`;
-					continue;
-				}
-			}
-
-			if(curArg.startsWith('-')) {
-				if(inProgress) {
-					message.reply(`Invalid syntax: parameter ${inProgress} has no value`);
-					return;
-				} else {
-					inProgress = curArg.slice(1);
-				}
-			}
-			else {
-				if(inProgress) {
-					switch (inProgress.toLowerCase()) {
-						case 'url':
-							sharedItem.url = curArg.toLowerCase();
-							break;
-						case 'password':
-							sharedItem.pwd = curArg;
-							break;
-						case 'bitrate':
-							sharedItem.bitRate = curArg;
-							break;
-						case 'size':
-							sharedItem.size = curArg;
-							break;
-						case 'length':
-							sharedItem.length = curArg;
-							break;
-						case 'category':
-							const category = curArg.toLowerCase();
-							const resultArr = await this.db.getChannelIDByName(category);
-							if(resultArr)
-								sharedItem.channel = resultArr[0];
-							else {
-								message.reply(`Sorry, the category ${category} is invalid.`);
-								return;
-							}
-							break;
-						case 'comment':
-						case 'comments':
-							sharedItem.comments = curArg;
-							break;
-						default:
-							message.reply(`Invalid parameter: ${inProgress}`);
-							return;
-					}
-					inProgress = '';
-				} else {
-					if(!sharedItem.titleID) {
-						sharedItem.titleID = curArg.toUpperCase();
-					} else {
-						message.reply("More than one Title IDs were detected. Please check your command.");
-						return;
-					}
-				}
-			}
+		// Terminate if there is any error while parsing the command
+		if(cmdInfo.errorMsg) {
+			message.reply(cmdInfo.errorMsg);
+			return;
 		}
 
-		if(inQuote) {
-			message.reply("Unterminated string detected. Did you forget the closing double-quotation mark? Please check your command.");
+		// Terminate if the number of title ID does not equal to 1
+		if(!cmdInfo.params.length) {
+			message.reply('Please at least specify a title ID');
 			return;
+		} else if (cmdInfo.params.length > 1) {
+			message.reply(`More than 1 title ID have been specified: ${cmdInfo.params.toString()}. Please only specify 1 title ID.`);
+			return;
+		}
+
+		sharedItem.titleID = cmdInfo.params[0]!.toUpperCase();
+
+		while(cmdInfo.options.length) {
+			let curOption = cmdInfo.options.pop()!;
+			switch(curOption.option) {
+				case 'url':
+					sharedItem.url = curOption.value.toLowerCase();
+					break;
+				case 'password':
+					sharedItem.pwd = curOption.value;
+					break;
+				case 'bitrate':
+					sharedItem.bitRate = curOption.value;
+					break;
+				case 'size':
+					sharedItem.size = curOption.value;
+					break;
+				case 'length':
+					sharedItem.length = curOption.value;
+					break;
+				case 'category':
+					const category = curOption.value.toLowerCase();
+					const resultArr = await this.db.getChannelIDByName(category);
+					if(resultArr.length)
+						sharedItem.channel = resultArr[0];
+					else {
+						message.reply(`Sorry, the category ${category} is invalid.`);
+						return;
+					}
+					break;
+				case 'comment':
+				case 'comments':
+					sharedItem.comments = curOption.value;
+					break;
+				default:
+					message.reply(`Invalid parameter: ${curOption.option}`);
+					return;
+			}
+
 		}
 
 		// Check if URL is missing

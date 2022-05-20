@@ -33,6 +33,23 @@ export class SharedItem {
 	comments = '';
 }
 
+export class OptionPair {
+	valueTooLong = false;
+	constructor (
+		public option = '',
+		public value = '',
+	 ) {}
+
+}
+
+export class CmdInfo {
+	errorMsg = '';
+	constructor (
+		public params: string[] = [],
+		public options: OptionPair[] = []
+	) {}
+}
+
 export enum TitleType {
 	'dvd',
 	'bd',
